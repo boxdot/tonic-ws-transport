@@ -47,13 +47,19 @@ pub mod channel {
 pub mod server {}
 
 pub mod connection {
+    use bytes::{BufMut, Bytes};
+    use futures_util::{future, StreamExt};
     use http::Uri;
     use pin_project::pin_project;
     use thiserror::Error;
-    use tokio::net::TcpStream;
+    use tokio::{
+        io::{self, AsyncRead},
+        net::TcpStream,
+    };
     use tokio_tungstenite::{tungstenite, WebSocketStream};
 
     use std::future::Future;
+    use std::mem::MaybeUninit;
     use std::pin::Pin;
     use std::task::{Context, Poll};
 
@@ -65,9 +71,26 @@ pub mod connection {
             Self
         }
 
-        async fn connect(&mut self, dst: Uri) -> Result<WsConnectorResponse, ConnectError> {
+        async fn connect(&mut self, dst: Uri) -> Result<WsConnection, ConnectError> {
             let (ws_stream, _) = tokio_tungstenite::connect_async(dst).await?;
-            Ok(WsConnectorResponse { ws_stream })
+            let (tx, rx) = ws_stream.split();
+
+            let bytes_rx = rx.filter_map(|msg| {
+                use tungstenite::Message;
+                future::ready(match msg {
+                    Ok(Message::Binary(data)) => Some(Ok(Bytes::from(data))),
+                    Ok(Message::Text(data)) => Some(Ok(Bytes::from(data))),
+                    Ok(Message::Ping(_)) | Ok(Message::Pong(_)) => None,
+                    Ok(Message::Close(_)) => Some(Err(io::Error::new(
+                        io::ErrorKind::ConnectionAborted,
+                        tungstenite::error::Error::ConnectionClosed,
+                    ))),
+                    Err(e) => Some(Err(io::Error::new(tokio::io::ErrorKind::Other, e))),
+                })
+            });
+            let reader = Box::new(tokio::io::stream_reader(bytes_rx));
+
+            Ok(WsConnection { reader })
         }
     }
 
@@ -78,7 +101,7 @@ pub mod connection {
     }
 
     impl tower_service::Service<Uri> for WsConnector {
-        type Response = WsConnectorResponse;
+        type Response = WsConnection;
         type Error = ConnectError;
         type Future = WsConnecting;
 
@@ -93,10 +116,6 @@ pub mod connection {
         }
     }
 
-    pub struct WsConnectorResponse {
-        ws_stream: WebSocketStream<TcpStream>,
-    }
-
     #[must_use = "futures do nothing unless polled"]
     #[pin_project]
     pub struct WsConnecting {
@@ -104,7 +123,7 @@ pub mod connection {
         fut: BoxConnecting,
     }
 
-    type ConnectResult = Result<WsConnectorResponse, ConnectError>;
+    type ConnectResult = Result<WsConnection, ConnectError>;
     type BoxConnecting = Pin<Box<dyn Future<Output = ConnectResult> + Send>>;
 
     impl Future for WsConnecting {
@@ -112,6 +131,35 @@ pub mod connection {
 
         fn poll(self: Pin<&mut Self>, cx: &mut Context) -> Poll<Self::Output> {
             self.project().fut.poll(cx)
+        }
+    }
+
+    #[pin_project]
+    pub struct WsConnection {
+        #[pin]
+        reader: Box<dyn AsyncRead + Unpin>,
+    }
+
+    // forward AsyncRead impl to the `reader` field
+    impl AsyncRead for WsConnection {
+        fn poll_read(
+            self: Pin<&mut Self>,
+            cx: &mut Context,
+            buf: &mut [u8],
+        ) -> Poll<io::Result<usize>> {
+            self.project().reader.poll_read(cx, buf)
+        }
+
+        unsafe fn prepare_uninitialized_buffer(&self, buf: &mut [MaybeUninit<u8>]) -> bool {
+            self.reader.prepare_uninitialized_buffer(buf)
+        }
+
+        fn poll_read_buf<B: BufMut>(
+            self: Pin<&mut Self>,
+            cx: &mut Context,
+            buf: &mut B,
+        ) -> Poll<io::Result<usize>> {
+            self.project().reader.poll_read_buf(cx, buf)
         }
     }
 }

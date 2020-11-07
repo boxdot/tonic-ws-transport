@@ -13,6 +13,8 @@ tokio-tungstenite = "0.11.0"
 tower = "0.3.1"
 tower-service = "0.3.0"
 pin-project = "1.0.1"
+tokio = { version = "0.2.2", features = ["net"] }
+futures-util = "0.3.7"
 
 [build-dependencies]
 tonic-build = "0.3.1"
