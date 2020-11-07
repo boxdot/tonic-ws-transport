@@ -1,7 +1,11 @@
 use thiserror::Error;
+use tokio_tungstenite::tungstenite::error::Error as TungsteniteError;
 
 #[derive(Debug, Error)]
-pub enum Error {}
+pub enum Error {
+    #[error(transparent)]
+    Tungstenite(#[from] TungsteniteError),
+}
 
 pub use channel::{Channel, Endpoint};
 
@@ -44,7 +48,26 @@ pub mod channel {
     }
 }
 
-pub mod server {}
+pub mod server {
+    // use crate::Error;
+
+    // use tokio::prelude::*;
+
+    // pub struct Builder;
+
+    // impl Builder {
+    //     pub async fn accept<S>(stream: S) -> Result<Server, Error>
+    //     where
+    //         S: AsyncRead + AsyncWrite + Unpin,
+    //     {
+    //         // let ws_stream = tokio_tungstenite::accept_async(stream).await?;
+    //         // Server { ws_stream }
+    //         todo!();
+    //     }
+    // }
+
+    // pub struct Server;
+}
 
 pub mod connection {
     use bytes::{BufMut, Bytes};
@@ -53,10 +76,14 @@ pub mod connection {
     use pin_project::pin_project;
     use thiserror::Error;
     use tokio::io::{self, AsyncRead, AsyncWrite};
+    use tokio::net::TcpStream;
     use tokio_tungstenite::tungstenite::{Error as TungsteniteError, Message};
+    use tokio_tungstenite::WebSocketStream;
+    use tonic::transport::server::Connected;
 
     use std::future::Future;
     use std::mem::MaybeUninit;
+    use std::net::SocketAddr;
     use std::pin::Pin;
     use std::task::{Context, Poll};
 
@@ -70,26 +97,7 @@ pub mod connection {
 
         async fn connect(&mut self, dst: Uri) -> Result<WsConnection, ConnectError> {
             let (ws_stream, _) = tokio_tungstenite::connect_async(dst).await?;
-            let (sink, stream) = ws_stream.split();
-
-            let bytes_stream = stream.filter_map(|msg| {
-                future::ready(match msg {
-                    Ok(Message::Binary(data)) => Some(Ok(Bytes::from(data))),
-                    Ok(Message::Text(data)) => Some(Ok(Bytes::from(data))),
-                    Ok(Message::Ping(_)) | Ok(Message::Pong(_)) => None,
-                    Ok(Message::Close(_)) => Some(Err(io::Error::new(
-                        io::ErrorKind::ConnectionAborted,
-                        TungsteniteError::ConnectionClosed,
-                    ))),
-                    Err(e) => Some(Err(io::Error::new(tokio::io::ErrorKind::Other, e))),
-                })
-            });
-            let reader = Box::new(io::stream_reader(bytes_stream));
-
-            Ok(WsConnection {
-                sink: Box::new(sink),
-                reader,
-            })
+            Ok(WsConnection::from_tungstenite(ws_stream))
         }
     }
 
@@ -139,6 +147,33 @@ pub mod connection {
         sink: Box<dyn Sink<Message, Error = TungsteniteError> + Send + Unpin>,
         #[pin]
         reader: Box<dyn AsyncRead + Send + Unpin>,
+        addr: Option<SocketAddr>,
+    }
+
+    impl WsConnection {
+        pub fn from_tungstenite(ws_stream: WebSocketStream<TcpStream>) -> Self {
+            let addr = ws_stream.get_ref().remote_addr();
+            let (sink, stream) = ws_stream.split();
+
+            let bytes_stream = stream.filter_map(|msg| {
+                future::ready(match msg {
+                    Ok(Message::Binary(data)) => Some(Ok(Bytes::from(data))),
+                    Ok(Message::Text(data)) => Some(Ok(Bytes::from(data))),
+                    Ok(Message::Ping(_)) | Ok(Message::Pong(_)) => None,
+                    Ok(Message::Close(_)) => Some(Err(io::Error::new(
+                        io::ErrorKind::ConnectionAborted,
+                        TungsteniteError::ConnectionClosed,
+                    ))),
+                    Err(e) => Some(Err(io::Error::new(tokio::io::ErrorKind::Other, e))),
+                })
+            });
+            let reader = Box::new(io::stream_reader(bytes_stream));
+            Self {
+                sink: Box::new(sink),
+                reader,
+                addr,
+            }
+        }
     }
 
     impl AsyncWrite for WsConnection {
@@ -198,6 +233,12 @@ pub mod connection {
             buf: &mut B,
         ) -> Poll<io::Result<usize>> {
             self.project().reader.poll_read_buf(cx, buf)
+        }
+    }
+
+    impl Connected for WsConnection {
+        fn remote_addr(&self) -> Option<SocketAddr> {
+            self.addr.clone()
         }
     }
 

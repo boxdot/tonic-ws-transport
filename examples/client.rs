@@ -9,7 +9,7 @@ pub mod hello_world {
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let endpoint = tonic::transport::Endpoint::from_static("http://[::1]:50051");
+    let endpoint = tonic::transport::Endpoint::from_static("ws://127.0.0.1:3012");
     let channel = endpoint.connect_with_connector(WsConnector::new()).await?;
 
     let mut client = GreeterClient::new(channel);
