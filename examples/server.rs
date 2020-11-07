@@ -1,4 +1,4 @@
-use tonic_ws_transport::connection::WsConnection;
+use tonic_ws_transport::WsConnection;
 
 use futures_util::StreamExt;
 use tokio::net::TcpListener;
@@ -38,7 +38,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         match connection {
             Ok(tcp_stream) => {
                 let ws_stream = tokio_tungstenite::accept_async(tcp_stream).await.unwrap();
-                Ok(WsConnection::from_tungstenite(ws_stream))
+                Ok(WsConnection::from(ws_stream))
             }
             Err(e) => Err(e),
         }

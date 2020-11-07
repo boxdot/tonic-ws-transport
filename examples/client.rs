@@ -1,7 +1,7 @@
 use hello_world::greeter_client::GreeterClient;
 use hello_world::HelloRequest;
 
-use tonic_ws_transport::connection::WsConnector;
+use tonic_ws_transport::WsConnector;
 
 pub mod hello_world {
     tonic::include_proto!("helloworld");
