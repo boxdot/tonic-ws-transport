@@ -6,6 +6,9 @@ edition = "2018"
 
 [dependencies]
 tonic = "0.3.1"
+http = "0.2.1"
+bytes = "0.6.0"
+thiserror = "1.0.22"
 
 [build-dependencies]
 tonic-build = "0.3.1"
