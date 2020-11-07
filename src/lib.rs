@@ -14,15 +14,15 @@ pub mod channel {
     pub struct Channel;
 
     impl Channel {
-        pub fn builder(uri: Uri) -> Endpoint {
+        pub fn builder(_uri: Uri) -> Endpoint {
             Endpoint
         }
 
-        pub fn from_static(s: &'static str) -> Endpoint {
+        pub fn from_static(_s: &'static str) -> Endpoint {
             Endpoint
         }
 
-        pub fn from_shared(s: impl Into<Bytes>) -> Result<Endpoint, InvalidUri> {
+        pub fn from_shared(_s: impl Into<Bytes>) -> Result<Endpoint, InvalidUri> {
             Ok(Endpoint)
         }
     }
@@ -30,11 +30,11 @@ pub mod channel {
     pub struct Endpoint;
 
     impl Endpoint {
-        pub fn from_static(s: &'static str) -> Self {
+        pub fn from_static(_s: &'static str) -> Self {
             Endpoint
         }
 
-        pub fn from_shared(s: impl Into<Bytes>) -> Result<Self, InvalidUri> {
+        pub fn from_shared(_s: impl Into<Bytes>) -> Result<Self, InvalidUri> {
             Ok(Endpoint)
         }
 
@@ -48,56 +48,55 @@ pub mod server {}
 
 pub mod connection {
     use bytes::{BufMut, Bytes};
-    use futures_util::{future, StreamExt};
+    use futures_util::{future, ready, sink::Sink, StreamExt};
     use http::Uri;
     use pin_project::pin_project;
     use thiserror::Error;
-    use tokio::{
-        io::{self, AsyncRead},
-        net::TcpStream,
-    };
-    use tokio_tungstenite::{tungstenite, WebSocketStream};
+    use tokio::io::{self, AsyncRead, AsyncWrite};
+    use tokio_tungstenite::tungstenite::{Error as TungsteniteError, Message};
 
     use std::future::Future;
     use std::mem::MaybeUninit;
     use std::pin::Pin;
     use std::task::{Context, Poll};
 
-    #[derive(Debug, Clone)]
+    #[derive(Debug, Clone, Default)]
     pub struct WsConnector;
 
     impl WsConnector {
         pub fn new() -> Self {
-            Self
+            Default::default()
         }
 
         async fn connect(&mut self, dst: Uri) -> Result<WsConnection, ConnectError> {
             let (ws_stream, _) = tokio_tungstenite::connect_async(dst).await?;
-            let (tx, rx) = ws_stream.split();
+            let (sink, stream) = ws_stream.split();
 
-            let bytes_rx = rx.filter_map(|msg| {
-                use tungstenite::Message;
+            let bytes_stream = stream.filter_map(|msg| {
                 future::ready(match msg {
                     Ok(Message::Binary(data)) => Some(Ok(Bytes::from(data))),
                     Ok(Message::Text(data)) => Some(Ok(Bytes::from(data))),
                     Ok(Message::Ping(_)) | Ok(Message::Pong(_)) => None,
                     Ok(Message::Close(_)) => Some(Err(io::Error::new(
                         io::ErrorKind::ConnectionAborted,
-                        tungstenite::error::Error::ConnectionClosed,
+                        TungsteniteError::ConnectionClosed,
                     ))),
                     Err(e) => Some(Err(io::Error::new(tokio::io::ErrorKind::Other, e))),
                 })
             });
-            let reader = Box::new(tokio::io::stream_reader(bytes_rx));
+            let reader = Box::new(io::stream_reader(bytes_stream));
 
-            Ok(WsConnection { reader })
+            Ok(WsConnection {
+                sink: Box::new(sink),
+                reader,
+            })
         }
     }
 
     #[derive(Debug, Error)]
     pub enum ConnectError {
         #[error(transparent)]
-        Tungstenite(#[from] tungstenite::error::Error),
+        Tungstenite(#[from] TungsteniteError),
     }
 
     impl tower_service::Service<Uri> for WsConnector {
@@ -137,7 +136,46 @@ pub mod connection {
     #[pin_project]
     pub struct WsConnection {
         #[pin]
-        reader: Box<dyn AsyncRead + Unpin>,
+        sink: Box<dyn Sink<Message, Error = TungsteniteError> + Send + Unpin>,
+        #[pin]
+        reader: Box<dyn AsyncRead + Send + Unpin>,
+    }
+
+    impl AsyncWrite for WsConnection {
+        fn poll_write(
+            self: Pin<&mut Self>,
+            cx: &mut Context,
+            buf: &[u8],
+        ) -> Poll<io::Result<usize>> {
+            // TODO: I have no clue if this is actually correct.
+            //       This depends on the meaning of the word "written" in the documentation of
+            //       `AsyncWrite`.
+            let mut self_ = self.project();
+            ready!(self_
+                .sink
+                .as_mut()
+                .poll_ready(cx)
+                .map_err(from_tungstenite_err)?);
+            self_
+                .sink
+                .start_send(Message::Binary(buf.to_vec()))
+                .map_err(from_tungstenite_err)?;
+            Poll::Ready(Ok(buf.len()))
+        }
+
+        fn poll_flush(self: Pin<&mut Self>, cx: &mut Context) -> Poll<io::Result<()>> {
+            self.project()
+                .sink
+                .poll_flush(cx)
+                .map_err(|e| io::Error::new(io::ErrorKind::Other, e))
+        }
+
+        fn poll_shutdown(self: Pin<&mut Self>, cx: &mut Context) -> Poll<io::Result<()>> {
+            self.project()
+                .sink
+                .poll_close(cx)
+                .map_err(|e| io::Error::new(io::ErrorKind::Other, e))
+        }
     }
 
     // forward AsyncRead impl to the `reader` field
@@ -161,5 +199,9 @@ pub mod connection {
         ) -> Poll<io::Result<usize>> {
             self.project().reader.poll_read_buf(cx, buf)
         }
+    }
+
+    fn from_tungstenite_err(e: TungsteniteError) -> io::Error {
+        io::Error::new(io::ErrorKind::Other, e)
     }
 }
