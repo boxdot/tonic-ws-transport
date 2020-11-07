@@ -182,9 +182,6 @@ pub mod connection {
             cx: &mut Context,
             buf: &[u8],
         ) -> Poll<io::Result<usize>> {
-            // TODO: I have no clue if this is actually correct.
-            //       This depends on the meaning of the word "written" in the documentation of
-            //       `AsyncWrite`.
             let mut self_ = self.project();
             ready!(self_
                 .sink
