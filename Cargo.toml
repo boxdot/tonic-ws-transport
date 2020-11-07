@@ -1,0 +1,15 @@
+[package]
+name = "tonic-ws-transport"
+version = "0.1.0"
+authors = ["boxdot <d@zerovolt.org>"]
+edition = "2018"
+
+[dependencies]
+tonic = "0.3.1"
+
+[build-dependencies]
+tonic-build = "0.3.1"
+
+[dev-dependencies]
+tokio = { version = "0.2.2", features = ["macros"] }
+prost = "0.6.1"
