@@ -1,0 +1,32 @@
+[package]
+name = "tonic-ws-transport"
+version = "0.1.0"
+authors = ["boxdot <d@zerovolt.org>"]
+edition = "2018"
+
+[features]
+default = ["native"]
+native = [
+    "tokio/net",
+    "tokio/io-util",
+    "tokio/stream",
+    "tonic/transport",
+    "tokio-tungstenite"
+]
+
+[dependencies]
+bytes = "0.5.6"
+cfg-if = "1.0.0"
+futures = "0.3.7"
+futures-util = "0.3.7"
+http = "0.2.1"
+pin-project = "1.0.1"
+thiserror = "1.0.22"
+tokio = { version = "0.2.2", default-features = false }
+tonic = { version = "0.3.1", default-features = false }
+tower = "0.3.1"
+tower-service = "0.3.0"
+tungstenite = { version = "0.11.0", default-features = false }
+
+# native
+tokio-tungstenite = { version = "0.11.0", optional = true }

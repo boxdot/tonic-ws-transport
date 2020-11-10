@@ -1,0 +1,25 @@
+[package]
+name = "server"
+version = "0.1.0"
+authors = ["boxdot <d@zerovolt.org>"]
+edition = "2018"
+publish = false
+
+[[bin]]
+name = "server"
+path = "src/server.rs"
+
+[[bin]]
+name = "client"
+path = "src/client.rs"
+
+[dependencies]
+tonic-ws-transport = { path = "../../transport", features = ["native"] }
+tonic = { version = "0.3.1", features = ["transport", "codegen", "prost"] }
+prost = "0.6.1"
+tokio = { version = "0.2.22", features = ["full"] }
+futures-util = "0.3.8"
+tokio-tungstenite = "0.11.0"
+
+[build-dependencies]
+tonic-build = "0.3.1"

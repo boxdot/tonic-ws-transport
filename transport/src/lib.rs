@@ -1,3 +1,7 @@
+// TODO: Remove
+#![allow(unused_variables)]
+#![allow(unused_imports)]
+
 use bytes::{BufMut, Bytes};
 use futures_util::{future, ready, sink::Sink, StreamExt};
 use http::Uri;
