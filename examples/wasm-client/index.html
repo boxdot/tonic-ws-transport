@@ -1,0 +1,20 @@
+<html>
+<head>
+  <meta content="text/html;charset=utf-8" http-equiv="Content-Type"/>
+  <title>gRPC client example</title>
+</head>
+<body>
+  <h1>gRPC client example</h1>
+  <p>See console output for the RPC call and response.</p>
+  <script type="module">
+    import init, { say_hello } from './pkg/wasm_client.js';
+
+    async function run() {
+      await init();
+      await say_hello();
+    }
+
+    run();
+  </script>
+</body>
+</html>
