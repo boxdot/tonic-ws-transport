@@ -1,0 +1,9 @@
+[workspace]
+members = [
+    "transport",
+    "examples/wasm-client",
+    "examples/helloworld",
+]
+
+[patch.crates-io]
+tonic = { path = "../tonic/tonic", default-features = false }
