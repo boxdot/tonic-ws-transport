@@ -4,17 +4,24 @@
   <title>gRPC client example</title>
 </head>
 <body>
+
   <h1>gRPC client example</h1>
-  <p>See console output for the RPC call and response.</p>
+  <p>See console output for the detailed logs of the RPC call.</p>
+  <button type="button">Send Request</button>
+
+  <p>Response</p>
+  <textarea style="width: 40em; height: 20em;"></textarea>
+
   <script type="module">
     import init, { say_hello } from './pkg/wasm_client.js';
 
-    async function run() {
-      await init();
-      await say_hello();
-    }
+    init();
 
-    run();
+    const text = document.getElementsByTagName('textarea')[0];
+    document.getElementsByTagName('button')[0].onclick = async () => {
+      const response = await say_hello();
+      text.innerHTML += response + '\n';
+    };
   </script>
 </body>
 </html>

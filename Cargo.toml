@@ -7,3 +7,5 @@ members = [
 
 [patch.crates-io]
 tonic = { path = "../tonic/tonic", default-features = false }
+h2 = { path = "../h2", default-features  = false }
+tower-buffer = { path = "../tower/tower-buffer" }

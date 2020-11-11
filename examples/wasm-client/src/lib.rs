@@ -11,11 +11,12 @@ pub mod hello_world {
 #[wasm_bindgen(start)]
 pub fn main() -> Result<(), JsValue> {
     console_error_panic_hook::set_once();
+    wasm_logger::init(wasm_logger::Config::new(log::Level::Debug));
     Ok(())
 }
 
 #[wasm_bindgen]
-pub async fn say_hello() {
+pub async fn say_hello() -> String {
     const URL: &str = "ws://127.0.0.1:3012";
     let endpoint = tonic::transport::Endpoint::from_static(URL);
     let channel = endpoint
@@ -33,4 +34,6 @@ pub async fn say_hello() {
 
     let response = client.say_hello(request).await.expect("RPC call failed");
     log::info!("RESPONSE={:?}", response);
+
+    format!("{:?}", response)
 }

@@ -3,7 +3,7 @@
 #![allow(unused_imports)]
 
 use bytes::{BufMut, Bytes};
-use futures_util::{future, ready, sink::Sink, StreamExt};
+use futures_util::{future, ready, sink::Sink, SinkExt, StreamExt};
 use http::Uri;
 use pin_project::pin_project;
 use thiserror::Error;
@@ -23,10 +23,31 @@ use std::net::SocketAddr;
 use std::pin::Pin;
 use std::task::{Context, Poll};
 
+#[cfg(target_arch = "wasm32")]
+mod web;
+
 #[derive(Debug, Error)]
 pub enum Error {
     #[error(transparent)]
     Tungstenite(#[from] TungsteniteError),
+    #[error("Js error: {0}")]
+    Js(String),
+}
+
+impl From<Error> for io::Error {
+    fn from(err: Error) -> io::Error {
+        todo!()
+    }
+}
+
+#[cfg(target_arch = "wasm32")]
+impl From<wasm_bindgen::JsValue> for Error {
+    fn from(value: wasm_bindgen::JsValue) -> Self {
+        let s = js_sys::JSON::stringify(&value)
+            .map(String::from)
+            .unwrap_or_else(|_| "unknown".to_string());
+        Error::Js(s)
+    }
 }
 
 #[derive(Debug, Clone, Default)]
@@ -43,7 +64,7 @@ impl WsConnector {
                 let (ws_stream, _) = tokio_tungstenite::connect_async(dst).await?;
                 Ok(WsConnection::from(ws_stream))
             } else {
-                todo!();
+                web::connect(dst).await
             }
         }
     }
@@ -73,6 +94,7 @@ pub struct WsConnecting {
 }
 
 type ConnectResult = Result<WsConnection, Error>;
+
 type BoxConnecting = Pin<Box<dyn Future<Output = ConnectResult> + Send>>;
 
 impl Future for WsConnecting {
@@ -86,17 +108,22 @@ impl Future for WsConnecting {
 #[pin_project]
 pub struct WsConnection {
     #[pin]
-    sink: Box<dyn Sink<Message, Error = TungsteniteError> + Send + Unpin>,
+    pub(crate) sink: WsConnectionSink,
     #[pin]
-    reader: Box<dyn AsyncRead + Send + Unpin>,
-    addr: Option<SocketAddr>,
+    pub(crate) reader: WsConnectionReader,
+    pub(crate) addr: Option<SocketAddr>,
 }
+
+type WsConnectionSink = Box<dyn Sink<Message, Error = Error> + Unpin + Send>;
+type WsConnectionReader = Box<dyn AsyncRead + Unpin + Send>;
 
 #[cfg(feature = "native")]
 impl From<WebSocketStream<TcpStream>> for WsConnection {
     fn from(ws_stream: WebSocketStream<TcpStream>) -> Self {
         let addr = ws_stream.get_ref().remote_addr();
         let (sink, stream) = ws_stream.split();
+
+        let sink = sink.sink_err_into();
 
         let bytes_stream = stream.filter_map(|msg| {
             future::ready(match msg {
@@ -122,15 +149,8 @@ impl From<WebSocketStream<TcpStream>> for WsConnection {
 impl AsyncWrite for WsConnection {
     fn poll_write(self: Pin<&mut Self>, cx: &mut Context, buf: &[u8]) -> Poll<io::Result<usize>> {
         let mut self_ = self.project();
-        ready!(self_
-            .sink
-            .as_mut()
-            .poll_ready(cx)
-            .map_err(from_tungstenite_err)?);
-        self_
-            .sink
-            .start_send(Message::Binary(buf.to_vec()))
-            .map_err(from_tungstenite_err)?;
+        ready!(self_.sink.as_mut().poll_ready(cx)?);
+        self_.sink.start_send(Message::Binary(buf.to_vec()))?;
         Poll::Ready(Ok(buf.len()))
     }
 
@@ -177,8 +197,4 @@ impl Connected for WsConnection {
     fn remote_addr(&self) -> Option<SocketAddr> {
         self.addr
     }
-}
-
-fn from_tungstenite_err(e: TungsteniteError) -> io::Error {
-    io::Error::new(io::ErrorKind::Other, e)
 }

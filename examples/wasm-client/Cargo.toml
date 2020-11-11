@@ -10,15 +10,17 @@ crate-type = ["cdylib", "rlib"]
 
 [dependencies]
 tonic-ws-transport = { path = "../../transport", default-features = false }
-tonic = { version = "0.3.1", default-features = false, features = ["client", "codegen", "prost"] }
-prost = "0.6.1"
-web-sys = "0.3.45"
-wasm-bindgen = "0.2.68"
-js-sys = "0.3.45"
-wasm-logger = "0.2.0"
-log = "0.4.11"
-wasm-bindgen-futures = "0.4.18"
+
 console_error_panic_hook = "0.1.6"
+js-sys = "0.3.45"
+log = "0.4.11"
+prost = "0.6.1"
+serde_json = "1.0.59"
+tonic = { version = "0.3.1", default-features = false, features = ["client", "codegen", "prost"] }
+wasm-bindgen = "0.2.68"
+wasm-bindgen-futures = "0.4.18"
+wasm-logger = "0.2.0"
+web-sys = "0.3.45"
 
 [build-dependencies]
 # Note: no "transport" feature => generated client does not have transport dependent code
