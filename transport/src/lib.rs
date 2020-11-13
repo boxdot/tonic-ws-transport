@@ -1,10 +1,5 @@
-// TODO: Remove
-#![allow(unused_variables)]
-#![allow(unused_imports)]
-
-use bytes::{BufMut, Bytes};
-use futures_util::{future, ready, sink::Sink, SinkExt, StreamExt};
-use http::Uri;
+use bytes::BufMut;
+use futures_util::{ready, sink::Sink};
 use pin_project::pin_project;
 use thiserror::Error;
 use tokio::io::{AsyncRead, AsyncWrite};
@@ -35,8 +30,8 @@ pub enum Error {
 }
 
 impl From<Error> for io::Error {
-    fn from(err: Error) -> io::Error {
-        todo!()
+    fn from(e: Error) -> io::Error {
+        io::Error::new(io::ErrorKind::Other, e)
     }
 }
 
@@ -58,19 +53,21 @@ impl WsConnector {
         Default::default()
     }
 
-    async fn connect(&mut self, dst: Uri) -> Result<WsConnection, Error> {
+    #[cfg(any(feature = "native", feature = "web"))]
+    async fn connect(&mut self, dst: http::Uri) -> Result<WsConnection, Error> {
         cfg_if::cfg_if! {
             if #[cfg(feature = "native")] {
                 let (ws_stream, _) = tokio_tungstenite::connect_async(dst).await?;
                 Ok(WsConnection::from(ws_stream))
-            } else {
+            } else if #[cfg(feature = "web")] {
                 web::connect(dst).await
             }
         }
     }
 }
 
-impl tower_service::Service<Uri> for WsConnector {
+#[cfg(any(feature = "native", feature = "web"))]
+impl tower_service::Service<http::Uri> for WsConnector {
     type Response = WsConnection;
     type Error = Error;
     type Future = WsConnecting;
@@ -79,7 +76,7 @@ impl tower_service::Service<Uri> for WsConnector {
         Poll::Ready(Ok(()))
     }
 
-    fn call(&mut self, dst: Uri) -> Self::Future {
+    fn call(&mut self, dst: http::Uri) -> Self::Future {
         let mut self_ = self.clone();
         let fut = Box::pin(async move { self_.connect(dst).await });
         WsConnecting { fut }
@@ -120,6 +117,9 @@ type WsConnectionReader = Box<dyn AsyncRead + Unpin + Send>;
 #[cfg(feature = "native")]
 impl From<WebSocketStream<TcpStream>> for WsConnection {
     fn from(ws_stream: WebSocketStream<TcpStream>) -> Self {
+        use bytes::Bytes;
+        use futures_util::{future, SinkExt, StreamExt};
+
         let addr = ws_stream.get_ref().remote_addr();
         let (sink, stream) = ws_stream.split();
 

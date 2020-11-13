@@ -1,31 +1,25 @@
-use super::WsConnection;
 use crate::Error;
 
-use bytes::Bytes;
-use futures_util::{
-    future, ready,
-    sink::{Sink, SinkExt},
-    stream::{Stream, TryStreamExt},
-};
-use http::Uri;
+use futures_util::{sink::Sink, stream::Stream};
 use js_sys::Uint8Array;
 use pin_project::pin_project;
-use tokio::io::AsyncRead;
 use tokio::sync::mpsc::{unbounded_channel, UnboundedReceiver};
-use tungstenite::{Error as TungsteniteError, Message};
+use tungstenite::Error as TungsteniteError;
 use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsCast;
-use web_sys::{BinaryType, MessageEvent, WebSocket};
+use web_sys::{MessageEvent, WebSocket};
 
 use std::future::Future;
-use std::io;
 use std::pin::Pin;
 use std::sync::Arc;
 use std::task::{Context, Poll};
 
-pub async fn connect(dst: Uri) -> Result<WsConnection, Error> {
+#[cfg(not(feature = "native"))]
+pub async fn connect(dst: http::Uri) -> Result<super::WsConnection, Error> {
+    use futures_util::{future, stream::TryStreamExt, SinkExt};
+
     let ws = Ws(Arc::new(WebSocket::new(&dst.to_string())?));
-    (*ws).set_binary_type(BinaryType::Arraybuffer);
+    (*ws).set_binary_type(web_sys::BinaryType::Arraybuffer);
     let client = WebConnection { ws, wake_fn: None }.await?;
 
     let sink = WebClientSink {
@@ -33,7 +27,7 @@ pub async fn connect(dst: Uri) -> Result<WsConnection, Error> {
         handlers: client.handlers.clone(),
     };
     let messages_sink = sink.with(|msg| match msg {
-        Message::Binary(data) => future::ready(Ok(data)),
+        tungstenite::Message::Binary(data) => future::ready(Ok(data)),
         _ => unreachable!(), // this sink supports only binary data
     });
 
@@ -43,10 +37,10 @@ pub async fn connect(dst: Uri) -> Result<WsConnection, Error> {
         rx: client.rx,
     };
     let bytes_stream = bytes_stream
-        .map_ok(Bytes::from)
-        .map_err(|e| io::Error::new(io::ErrorKind::Other, e));
+        .map_ok(bytes::Bytes::from)
+        .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e));
 
-    Ok(WsConnection {
+    Ok(super::WsConnection {
         sink: Box::new(messages_sink),
         reader: Box::new(tokio::io::stream_reader(bytes_stream)),
         addr: None,
@@ -142,7 +136,7 @@ impl WebClient {
 
         let message_fn = Closure::wrap(Box::new(move |event: MessageEvent| {
             let array = Uint8Array::new(&event.data());
-            let _ = tx.send(Ok(array.to_vec()));
+            tx.send(Ok(array.to_vec())).expect("logic error: rx closed");
         }) as Box<dyn FnMut(_)>);
         let close_fn = Closure::once(Box::new({
             let ws = ws.clone();
