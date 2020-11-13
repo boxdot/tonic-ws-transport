@@ -23,7 +23,7 @@ use std::net::SocketAddr;
 use std::pin::Pin;
 use std::task::{Context, Poll};
 
-#[cfg(target_arch = "wasm32")]
+#[cfg(feature = "web")]
 mod web;
 
 #[derive(Debug, Error)]
@@ -40,7 +40,7 @@ impl From<Error> for io::Error {
     }
 }
 
-#[cfg(target_arch = "wasm32")]
+#[cfg(feature = "web")]
 impl From<wasm_bindgen::JsValue> for Error {
     fn from(value: wasm_bindgen::JsValue) -> Self {
         let s = js_sys::JSON::stringify(&value)
