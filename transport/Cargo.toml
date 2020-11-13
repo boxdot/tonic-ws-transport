@@ -20,7 +20,7 @@ futures = "0.3.7"
 futures-util = "0.3.7"
 http = "0.2.1"
 pin-project = "1.0.1"
-thiserror = "1.0.22"
+thiserror = "1.0.21"
 tokio = { version = "0.2.2", default-features = false, features = ["io-util"] }
 tonic = { version = "0.3.1", default-features = false }
 tower = "0.3.1"
