@@ -198,3 +198,10 @@ impl Connected for WsConnection {
         self.addr
     }
 }
+
+#[cfg(feature = "native")]
+impl hyper::client::connect::Connection for WsConnection {
+    fn connected(&self) -> hyper::client::connect::Connected {
+        hyper::client::connect::Connected::new()
+    }
+}
