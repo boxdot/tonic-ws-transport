@@ -79,7 +79,10 @@ impl Future for WebConnection {
             WebSocket::CONNECTING => {
                 // poll can be called multiple times and only the last waker must be notified
                 // => always replace the callbacks with the latest waker
-                let wake_fn = WakeFn::register(
+
+                // drop, i.e. unregister the previous waker *before* setting the new one
+                self.as_mut().wake_fn.take();
+                self.as_mut().wake_fn = Some(WakeFn::register(
                     self.ws.clone(),
                     Some(Closure::once(Box::new({
                         let ws = self.ws.clone();
@@ -89,8 +92,7 @@ impl Future for WebConnection {
                             waker.wake();
                         }
                     }) as Box<dyn FnOnce()>)),
-                );
-                self.as_mut().wake_fn = Some(wake_fn); // keep alive
+                ));
                 Poll::Pending
             }
             _ => unreachable!(),
@@ -98,6 +100,7 @@ impl Future for WebConnection {
     }
 }
 
+// Note: on drop any handler even one which replaced the current one is removed
 struct WakeFn {
     ws: Ws,
     wake_fn: Option<Closure<dyn FnMut()>>,
