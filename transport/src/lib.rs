@@ -111,6 +111,12 @@ pub struct WsConnection {
     pub(crate) addr: Option<SocketAddr>,
 }
 
+impl WsConnection {
+    fn remote_addr(&self) -> Option<SocketAddr> {
+        self.addr
+    }
+}
+
 type WsConnectionSink = Box<dyn Sink<Message, Error = Error> + Unpin + Send>;
 type WsConnectionReader = Box<dyn AsyncRead + Unpin + Send>;
 
@@ -195,7 +201,7 @@ impl AsyncRead for WsConnection {
 #[cfg(feature = "native")]
 impl Connected for WsConnection {
     fn remote_addr(&self) -> Option<SocketAddr> {
-        self.addr
+        self.remote_addr()
     }
 }
 
