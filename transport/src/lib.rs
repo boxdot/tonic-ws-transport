@@ -112,7 +112,7 @@ pub struct WsConnection {
 }
 
 impl WsConnection {
-    fn remote_addr(&self) -> Option<SocketAddr> {
+    pub fn remote_addr(&self) -> Option<SocketAddr> {
         self.addr
     }
 }
