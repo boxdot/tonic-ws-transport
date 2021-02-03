@@ -254,10 +254,6 @@ impl Stream for WebClientStream {
     type Item = Result<Vec<u8>, Error>;
 
     fn poll_next(self: Pin<&mut Self>, cx: &mut Context) -> Poll<Option<Self::Item>> {
-        self.project().rx.poll_next(cx)
-    }
-
-    fn size_hint(&self) -> (usize, Option<usize>) {
-        self.rx.size_hint()
+        self.project().rx.poll_recv(cx)
     }
 }

@@ -1,8 +1,7 @@
-use bytes::BufMut;
 use futures_util::{ready, sink::Sink};
 use pin_project::pin_project;
 use thiserror::Error;
-use tokio::io::{AsyncRead, AsyncWrite};
+use tokio::io::{AsyncRead, AsyncWrite, ReadBuf};
 #[cfg(feature = "native")]
 use tokio::net::TcpStream;
 #[cfg(feature = "native")]
@@ -13,7 +12,6 @@ use tungstenite::{Error as TungsteniteError, Message};
 
 use std::future::Future;
 use std::io;
-use std::mem::MaybeUninit;
 use std::net::SocketAddr;
 use std::pin::Pin;
 use std::task::{Context, Poll};
@@ -143,7 +141,7 @@ impl From<WebSocketStream<TcpStream>> for WsConnection {
                 Err(e) => Some(Err(io::Error::new(io::ErrorKind::Other, e))),
             })
         });
-        let reader = Box::new(tokio::io::stream_reader(bytes_stream));
+        let reader = Box::new(tokio_util::io::StreamReader::new(bytes_stream));
         Self {
             sink: Box::new(sink),
             reader,
@@ -180,21 +178,9 @@ impl AsyncRead for WsConnection {
     fn poll_read(
         self: Pin<&mut Self>,
         cx: &mut Context,
-        buf: &mut [u8],
-    ) -> Poll<io::Result<usize>> {
+        buf: &mut ReadBuf,
+    ) -> Poll<io::Result<()>> {
         self.project().reader.poll_read(cx, buf)
-    }
-
-    unsafe fn prepare_uninitialized_buffer(&self, buf: &mut [MaybeUninit<u8>]) -> bool {
-        self.reader.prepare_uninitialized_buffer(buf)
-    }
-
-    fn poll_read_buf<B: BufMut>(
-        self: Pin<&mut Self>,
-        cx: &mut Context,
-        buf: &mut B,
-    ) -> Poll<io::Result<usize>> {
-        self.project().reader.poll_read_buf(cx, buf)
     }
 }
 
