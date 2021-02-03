@@ -2,6 +2,7 @@ use tonic_ws_transport::WsConnection;
 
 use futures_util::StreamExt;
 use tokio::net::TcpListener;
+use tokio_stream::wrappers::TcpListenerStream;
 use tonic::{transport::Server, Request, Response, Status};
 
 use hello_world::greeter_server::{Greeter, GreeterServer};
@@ -33,8 +34,9 @@ impl Greeter for MyGreeter {
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let addr = "127.0.0.1:3012";
 
-    let mut listener = TcpListener::bind(addr).await?;
-    let incoming = listener.incoming().then(|connection| async {
+    let listener = TcpListener::bind(addr).await?;
+    let listener_stream = TcpListenerStream::new(listener);
+    let incoming = listener_stream.then(|connection| async {
         match connection {
             Ok(tcp_stream) => {
                 let ws_stream = tokio_tungstenite::accept_async(tcp_stream).await.unwrap();

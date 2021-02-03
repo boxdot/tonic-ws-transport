@@ -65,7 +65,7 @@ impl WsConnector {
 }
 
 #[cfg(any(feature = "native", feature = "web"))]
-impl tower_service::Service<http::Uri> for WsConnector {
+impl tower::Service<http::Uri> for WsConnector {
     type Response = WsConnection;
     type Error = Error;
     type Future = WsConnecting;

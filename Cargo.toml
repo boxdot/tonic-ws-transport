@@ -6,6 +6,6 @@ members = [
 ]
 
 [patch.crates-io]
-tonic = { git = "https://github.com/boxdot/tonic", branch = "tonic-ws-transport" }
+tonic = { git = "https://github.com/boxdot/tonic", rev = "38817a9" }
 h2 = { git = "https://github.com/boxdot/h2", rev = "f6ae28c3" }
 tower = { git = "https://github.com/boxdot/tower", rev = "14f9f1f" }

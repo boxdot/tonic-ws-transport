@@ -9,19 +9,19 @@ publish = false
 crate-type = ["cdylib", "rlib"]
 
 [dependencies]
-tonic-ws-transport = { path = "../../transport", default-features = false }
+tonic-ws-transport = { path = "../../transport", default-features = false, features = ["web"] }
 
 console_error_panic_hook = "0.1.6"
-js-sys = "0.3.45"
-log = "0.4.11"
-prost = "0.6.1"
-serde_json = "1.0.59"
-tonic = { version = "0.3.1", default-features = false, features = ["client", "codegen", "prost"] }
-wasm-bindgen = "0.2.68"
-wasm-bindgen-futures = "0.4.18"
+js-sys = "0.3.47"
+log = "0.4.14"
+prost = "0.7.0"
+serde_json = "1.0.61"
+tonic = { version = "0.4.0", default-features = false, features = ["client", "codegen", "prost"] }
+wasm-bindgen = "0.2.70"
+wasm-bindgen-futures = "0.4.20"
 wasm-logger = "0.2.0"
-web-sys = "0.3.45"
+web-sys = "0.3.47"
 
 [build-dependencies]
 # Note: no "transport" feature => generated client does not have transport dependent code
-tonic-build = { version = "0.3.1", default-features = false, features = ["prost", "rustfmt"] }
+tonic-build = { version = "0.4.0", default-features = false, features = ["prost", "rustfmt"] }
