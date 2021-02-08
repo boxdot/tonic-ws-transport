@@ -16,7 +16,6 @@ web = [
     "getrandom",
     "js-sys",
     "tokio/sync",
-    "tower/wasm",
     "wasm-bindgen",
     "wasm-bindgen-futures",
     "web-sys",
