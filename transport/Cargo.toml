@@ -10,12 +10,14 @@ native = [
     "hyper",
     "tokio-tungstenite",
     "tokio/net",
-    "tonic/transport",
+    "tonic",
+    "tower",
 ]
 web = [
     "getrandom",
     "js-sys",
     "tokio/sync",
+    "tower",
     "wasm-bindgen",
     "wasm-bindgen-futures",
     "web-sys",
@@ -28,19 +30,19 @@ futures-util = { version = "0.3.12", default-features = false, features = ["sink
 http = "0.2.3"
 pin-project = "1.0.5"
 thiserror = "1.0.23"
-tokio = { version = "1.1.1", default-features = false }
+tokio = { version = "1.1.1", default-features = false, features = ["rt"] }
 tokio-util = { version = "0.6.3", default-features = false, features = ["io"] }
-tower = { version = "0.4.4", default-features = false }
+tower = { version = "0.4.4", default-features = false, optional = true }
 tungstenite = { version = "0.12.0", default-features = false }
 
 # native
 hyper = { version = "0.14.2", default-features = false, optional = true }
 tokio-tungstenite = { version = "0.13.0", optional = true }
-tonic = { version = "0.4.0", default-features = false, optional = true }
+tonic = { version = "0.4.0", default-features = false, features = ["transport"], optional = true }
 
 # web
+getrandom = { version = "0.2.2", features = ["js"], optional = true }
 js-sys = { version = "0.3.47", optional = true }
 wasm-bindgen = { version = "0.2.70", optional = true }
 wasm-bindgen-futures = { version = "0.4.20", optional = true }
 web-sys = { version = "0.3.47", features = ["WebSocket", "BinaryType"], optional = true }
-getrandom = { version = "0.2.2", features = ["js"], optional = true }

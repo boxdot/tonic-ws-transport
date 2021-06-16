@@ -1,14 +1,11 @@
+#[cfg(feature = "native")]
+pub use native::WsConnectionInfo;
+
 use futures_util::{ready, sink::Sink};
 use pin_project::pin_project;
 use thiserror::Error;
 use tokio::io::{AsyncRead, AsyncWrite, ReadBuf};
-#[cfg(feature = "native")]
-use tokio::net::TcpStream;
-#[cfg(feature = "native")]
-use tokio_tungstenite::WebSocketStream;
-#[cfg(feature = "native")]
-use tonic::transport::server::Connected;
-use tungstenite::{Error as TungsteniteError, Message};
+use tungstenite::Message;
 
 use std::future::Future;
 use std::io;
@@ -16,13 +13,16 @@ use std::net::SocketAddr;
 use std::pin::Pin;
 use std::task::{Context, Poll};
 
+#[cfg(feature = "native")]
+mod native;
 #[cfg(feature = "web")]
 mod web;
 
 #[derive(Debug, Error)]
 pub enum Error {
+    #[cfg(feature = "native")]
     #[error(transparent)]
-    Tungstenite(#[from] TungsteniteError),
+    Tungstenite(#[from] tungstenite::Error),
     #[error("Js error: {0}")]
     Js(String),
 }
@@ -106,49 +106,11 @@ pub struct WsConnection {
     pub(crate) sink: WsConnectionSink,
     #[pin]
     pub(crate) reader: WsConnectionReader,
-    pub(crate) addr: Option<SocketAddr>,
-}
-
-impl WsConnection {
-    pub fn remote_addr(&self) -> Option<SocketAddr> {
-        self.addr
-    }
+    pub(crate) peer_addr: Option<SocketAddr>,
 }
 
 type WsConnectionSink = Box<dyn Sink<Message, Error = Error> + Unpin + Send>;
 type WsConnectionReader = Box<dyn AsyncRead + Unpin + Send>;
-
-#[cfg(feature = "native")]
-impl From<WebSocketStream<TcpStream>> for WsConnection {
-    fn from(ws_stream: WebSocketStream<TcpStream>) -> Self {
-        use bytes::Bytes;
-        use futures_util::{future, SinkExt, StreamExt};
-
-        let addr = ws_stream.get_ref().remote_addr();
-        let (sink, stream) = ws_stream.split();
-
-        let sink = sink.sink_err_into();
-
-        let bytes_stream = stream.filter_map(|msg| {
-            future::ready(match msg {
-                Ok(Message::Binary(data)) => Some(Ok(Bytes::from(data))),
-                Ok(Message::Text(data)) => Some(Ok(Bytes::from(data))),
-                Ok(Message::Ping(_)) | Ok(Message::Pong(_)) => None,
-                Ok(Message::Close(_)) => Some(Err(io::Error::new(
-                    io::ErrorKind::ConnectionAborted,
-                    TungsteniteError::ConnectionClosed,
-                ))),
-                Err(e) => Some(Err(io::Error::new(io::ErrorKind::Other, e))),
-            })
-        });
-        let reader = Box::new(tokio_util::io::StreamReader::new(bytes_stream));
-        Self {
-            sink: Box::new(sink),
-            reader,
-            addr,
-        }
-    }
-}
 
 impl AsyncWrite for WsConnection {
     fn poll_write(self: Pin<&mut Self>, cx: &mut Context, buf: &[u8]) -> Poll<io::Result<usize>> {
@@ -181,19 +143,5 @@ impl AsyncRead for WsConnection {
         buf: &mut ReadBuf,
     ) -> Poll<io::Result<()>> {
         self.project().reader.poll_read(cx, buf)
-    }
-}
-
-#[cfg(feature = "native")]
-impl Connected for WsConnection {
-    fn remote_addr(&self) -> Option<SocketAddr> {
-        self.remote_addr()
-    }
-}
-
-#[cfg(feature = "native")]
-impl hyper::client::connect::Connection for WsConnection {
-    fn connected(&self) -> hyper::client::connect::Connected {
-        hyper::client::connect::Connected::new()
     }
 }

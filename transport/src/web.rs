@@ -195,8 +195,8 @@ impl Drop for Handlers {
             self.ws.set_onerror(None);
             self.ws.set_onclose(None);
         }
-        if let Err(e) = self.ws.close() {
-            panic!("{}", Error::from(e));
+        if self.ws.close().is_err() {
+            // silently ignore the error since cannot panic in drop
         }
     }
 }
