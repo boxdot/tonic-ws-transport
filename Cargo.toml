@@ -6,5 +6,6 @@ members = [
 ]
 
 [patch.crates-io]
-tonic = { git = "https://github.com/boxdot/tonic", rev = "38817a9" }
-h2 = { git = "https://github.com/boxdot/h2", rev = "f6ae28c3" }
+tonic = { git = "https://github.com/boxdot/tonic", rev = "0d9e44e" }
+# patched since https://github.com/hyperium/h2/pull/537 is not yet released
+h2 = { git = "https://github.com/hyperium/h2", rev = "04570652" }

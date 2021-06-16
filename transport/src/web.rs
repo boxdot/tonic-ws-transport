@@ -196,7 +196,7 @@ impl Drop for Handlers {
             self.ws.set_onclose(None);
         }
         if let Err(e) = self.ws.close() {
-            panic!(Error::from(e));
+            panic!("{}", Error::from(e));
         }
     }
 }
