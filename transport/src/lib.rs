@@ -9,7 +9,6 @@ use tungstenite::Message;
 
 use std::future::Future;
 use std::io;
-use std::net::SocketAddr;
 use std::pin::Pin;
 use std::task::{Context, Poll};
 
@@ -19,8 +18,9 @@ mod native;
 mod web;
 
 #[derive(Debug, Error)]
+#[non_exhaustive]
 pub enum Error {
-    #[cfg(feature = "native")]
+    #[cfg(any(feature = "native", feature = "web"))]
     #[error(transparent)]
     Tungstenite(#[from] tungstenite::Error),
     #[error("Js error: {0}")]
@@ -56,7 +56,7 @@ impl WsConnector {
         cfg_if::cfg_if! {
             if #[cfg(feature = "native")] {
                 let (ws_stream, _) = tokio_tungstenite::connect_async(dst).await?;
-                Ok(WsConnection::from(ws_stream))
+                Ok(WsConnection::from_combined_channel(ws_stream))
             } else if #[cfg(feature = "web")] {
                 web::connect(dst).await
             }
@@ -106,7 +106,6 @@ pub struct WsConnection {
     pub(crate) sink: WsConnectionSink,
     #[pin]
     pub(crate) reader: WsConnectionReader,
-    pub(crate) peer_addr: Option<SocketAddr>,
 }
 
 type WsConnectionSink = Box<dyn Sink<Message, Error = Error> + Unpin + Send>;

@@ -40,7 +40,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         match connection {
             Ok(tcp_stream) => {
                 let ws_stream = tokio_tungstenite::accept_async(tcp_stream).await.unwrap();
-                Ok(WsConnection::from(ws_stream))
+                Ok(WsConnection::from_combined_channel(ws_stream))
             }
             Err(e) => Err(e),
         }

@@ -1,18 +1,21 @@
 use super::WsConnection;
 
-use tokio::net::TcpStream;
-use tokio_tungstenite::WebSocketStream;
+use bytes::Bytes;
+use futures_util::{future, sink::Sink, stream::Stream, SinkExt, StreamExt};
 use tonic::transport::server::Connected;
 use tungstenite::{Error as TungsteniteError, Message};
 
 use std::io;
 
-impl From<WebSocketStream<TcpStream>> for WsConnection {
-    fn from(ws_stream: WebSocketStream<TcpStream>) -> Self {
-        use bytes::Bytes;
-        use futures_util::{future, SinkExt, StreamExt};
-
-        let peer_addr = ws_stream.get_ref().peer_addr().ok();
+impl WsConnection {
+    pub fn from_combined_channel<S>(ws_stream: S) -> Self
+    where
+        S: Sink<Message, Error = TungsteniteError>
+            + Stream<Item = Result<Message, TungsteniteError>>
+            + Send
+            + Unpin
+            + 'static,
+    {
         let (sink, stream) = ws_stream.split();
 
         let sink = sink.sink_err_into();
@@ -33,12 +36,12 @@ impl From<WebSocketStream<TcpStream>> for WsConnection {
         Self {
             sink: Box::new(sink),
             reader,
-            peer_addr,
         }
     }
 }
 
 #[derive(Clone)]
+#[non_exhaustive]
 pub struct WsConnectionInfo {}
 
 impl Connected for WsConnection {
