@@ -3,16 +3,18 @@
 
 An experimental library to enable gRPC tunnelling over a WebSocket.
 
-This is work in progress and does not work (yet) without patched `tonic`,
-`h2` and `tower-buffer`. See `Cargo.toml` for the patches.
+This is work in progress and requires a patched `tonic`. See
+`Cargo.toml` for the patches.
 
 ## Why
 
-We would like to use gRPC in browsers that do not support bare TCP
-connections and HTTP/2. For that, we use WebSockets to emulate TCP
-and use HTTP/2 implementation from tonic/hyper/h2.
+We would like to use gRPC in browsers that do not support bare TCP connections
+and HTTP/2. For that, we use WebSockets to emulate TCP and use HTTP/2
+implementation from tonic/hyper/h2. This is especially useful for streaming
+gRPC. Note that gRPC-web does not support client to server streaming:
+https://github.com/grpc/grpc-web/issues/815.
 
-## Example
+## Examplee
 
 Run server example in native environment:
 
