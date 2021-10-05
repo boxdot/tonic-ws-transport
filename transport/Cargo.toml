@@ -12,6 +12,7 @@ native = [
     "tokio/net",
     "tonic",
     "tower",
+    "headers",
 ]
 web = [
     "getrandom",
@@ -39,6 +40,7 @@ tungstenite = { version = "0.13.0", default-features = false }
 hyper = { version = "0.14.2", default-features = false, optional = true }
 tokio-tungstenite = { version = "0.14.0", optional = true }
 tonic = { version = "0.5.0", default-features = false, features = ["transport"], optional = true }
+headers = { version = "0.3.4", optional = true }
 
 # web
 getrandom = { version = "0.2.2", features = ["js"], optional = true }

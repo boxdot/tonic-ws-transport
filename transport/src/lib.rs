@@ -7,9 +7,11 @@ use thiserror::Error;
 use tokio::io::{AsyncRead, AsyncWrite, ReadBuf};
 use tungstenite::Message;
 
+use std::fmt::Debug;
 use std::future::Future;
 use std::io;
 use std::pin::Pin;
+use std::sync::Arc;
 use std::task::{Context, Poll};
 
 #[cfg(feature = "native")]
@@ -23,6 +25,9 @@ pub enum Error {
     #[cfg(any(feature = "native", feature = "web"))]
     #[error(transparent)]
     Tungstenite(#[from] tungstenite::Error),
+    #[cfg(feature = "native")]
+    #[error(transparent)]
+    InvalidBearerToken(#[from] headers::authorization::InvalidBearerToken),
     #[error("Js error: {0}")]
     Js(String),
 }
@@ -43,24 +48,56 @@ impl From<wasm_bindgen::JsValue> for Error {
     }
 }
 
-#[derive(Debug, Clone, Default)]
-pub struct WsConnector;
+#[derive(Clone, Default)]
+pub struct WsConnector {
+    resolve_bearer_token: Option<Arc<dyn Fn() -> String + Sync + Send + 'static>>,
+}
+
+impl Debug for WsConnector {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("WsConnector").finish_non_exhaustive()
+    }
+}
 
 impl WsConnector {
     pub fn new() -> Self {
         Default::default()
     }
 
+    pub fn with_bearer_resolver(
+        resolve_token: impl Fn() -> String + Send + Sync + 'static,
+    ) -> Self {
+        Self {
+            resolve_bearer_token: Some(Arc::new(resolve_token)),
+        }
+    }
+
     #[cfg(any(feature = "native", feature = "web"))]
     async fn connect(&mut self, dst: http::Uri) -> Result<WsConnection, Error> {
         cfg_if::cfg_if! {
             if #[cfg(feature = "native")] {
-                let (ws_stream, _) = tokio_tungstenite::connect_async(dst).await?;
-                Ok(WsConnection::from_combined_channel(ws_stream))
+                self.connect_native_impl(dst).await
             } else if #[cfg(feature = "web")] {
                 web::connect(dst).await
             }
         }
+    }
+
+    #[cfg(feature = "native")]
+    pub async fn connect_native_impl(&mut self, dst: http::Uri) -> Result<WsConnection, Error> {
+        use headers::{Authorization, HeaderMapExt};
+
+        let mut request = http::Request::get(dst);
+        if let Some(resolver) = self.resolve_bearer_token.as_ref() {
+            let token = resolver();
+            if let Some(headers) = request.headers_mut() {
+                headers.typed_insert(Authorization::bearer(&token)?);
+            }
+        }
+        let request = request.body(()).map_err(|e| Error::Tungstenite(e.into()))?;
+
+        let (ws_stream, _) = tokio_tungstenite::connect_async(request).await?;
+        Ok(WsConnection::from_combined_channel(ws_stream))
     }
 }
 
