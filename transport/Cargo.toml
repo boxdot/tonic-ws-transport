@@ -47,4 +47,4 @@ getrandom = { version = "0.2.2", features = ["js"], optional = true }
 js-sys = { version = "0.3.47", optional = true }
 wasm-bindgen = { version = "0.2.70", optional = true }
 wasm-bindgen-futures = { version = "0.4.20", optional = true }
-web-sys = { version = "0.3.47", features = ["WebSocket", "BinaryType"], optional = true }
+web-sys = { version = "0.3.47", features = ["WebSocket", "BinaryType", "MessageEvent"], optional = true }

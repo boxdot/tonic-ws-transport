@@ -13,7 +13,6 @@ use std::io;
 use std::pin::Pin;
 use std::sync::Arc;
 use std::task::{Context, Poll};
-use tungstenite::client::IntoClientRequest;
 
 #[cfg(feature = "native")]
 mod native;
@@ -87,6 +86,7 @@ impl WsConnector {
     #[cfg(feature = "native")]
     pub async fn connect_native_impl(&mut self, dst: http::Uri) -> Result<WsConnection, Error> {
         use headers::{Authorization, HeaderMapExt};
+        use tungstenite::client::IntoClientRequest;
 
         let mut request = dst.into_client_request()?;
         if let Some(resolver) = self.resolve_bearer_token.as_ref() {
@@ -94,7 +94,7 @@ impl WsConnector {
             request.headers_mut().typed_insert(Authorization::bearer(&token)?);
         }
 
-        let (ws_stream, _) = tokio_tungstenite::connect_async(request).await?;
+        let (ws_stream, _) = tokio_tungstenite::connect_async(dst).await?;
         Ok(WsConnection::from_combined_channel(ws_stream))
     }
 }

@@ -1,0 +1,4 @@
+[build]
+# This is necessary because tonic needs the tower `make` feature which in turn needs tokios io-std feature which doesn't
+# compile on wasm unless tokio_unstable is active
+rustflags = ["--cfg=tokio_unstable"]
