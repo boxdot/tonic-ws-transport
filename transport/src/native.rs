@@ -29,6 +29,7 @@ impl WsConnection {
                     io::ErrorKind::ConnectionAborted,
                     TungsteniteError::ConnectionClosed,
                 ))),
+                Ok(Message::Frame(_)) => {None}
                 Err(e) => Some(Err(io::Error::new(io::ErrorKind::Other, e))),
             })
         });

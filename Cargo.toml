@@ -4,7 +4,8 @@ members = [
     "examples/wasm-client",
     "examples/helloworld",
 ]
+resolver = "2"
 
 [patch.crates-io]
-tonic = { git = "https://github.com/boxdot/tonic", rev = "2ed4144" }
-tonic-build = { git = "https://github.com/boxdot/tonic", rev = "2ed4144" }
+tonic = { git = "https://github.com/lucasmerlin/tonic", branch = "wasm-client-feature" }
+tonic-build = { git = "https://github.com/lucasmerlin/tonic", branch = "wasm-client-feature" }

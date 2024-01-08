@@ -86,17 +86,15 @@ impl WsConnector {
     #[cfg(feature = "native")]
     pub async fn connect_native_impl(&mut self, dst: http::Uri) -> Result<WsConnection, Error> {
         use headers::{Authorization, HeaderMapExt};
+        use tungstenite::client::IntoClientRequest;
 
-        let mut request = http::Request::get(dst);
+        let mut request = dst.into_client_request()?;
         if let Some(resolver) = self.resolve_bearer_token.as_ref() {
             let token = resolver();
-            if let Some(headers) = request.headers_mut() {
-                headers.typed_insert(Authorization::bearer(&token)?);
-            }
+            request.headers_mut().typed_insert(Authorization::bearer(&token)?);
         }
-        let request = request.body(()).map_err(|e| Error::Tungstenite(e.into()))?;
 
-        let (ws_stream, _) = tokio_tungstenite::connect_async(request).await?;
+        let (ws_stream, _) = tokio_tungstenite::connect_async(dst).await?;
         Ok(WsConnection::from_combined_channel(ws_stream))
     }
 }

@@ -14,9 +14,9 @@ tonic-ws-transport = { path = "../../transport", default-features = false, featu
 console_error_panic_hook = "0.1.6"
 js-sys = "0.3.47"
 log = "0.4.14"
-prost = "0.8.0"
+prost = "0.12.3"
 serde_json = "1.0.61"
-tonic = { version = "0.5.0", default-features = false, features = ["client", "codegen", "prost"] }
+tonic = { version = "0.10.2", default-features = false, features = ["client", "codegen", "prost", "channel"] }
 wasm-bindgen = "0.2.70"
 wasm-bindgen-futures = "0.4.20"
 wasm-logger = "0.2.0"
@@ -24,4 +24,4 @@ web-sys = "0.3.47"
 
 [build-dependencies]
 # Note: no "transport" feature => generated client does not have transport dependent code
-tonic-build = { version = "0.5.0", default-features = false, features = ["prost", "rustfmt"] }
+tonic-build = { version = "0.10.2", default-features = false, features = ["prost"] }

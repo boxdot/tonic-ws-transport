@@ -2,7 +2,7 @@
 name = "server"
 version = "0.1.0"
 authors = ["boxdot <d@zerovolt.org>"]
-edition = "2018"
+edition = "2021"
 publish = false
 
 [[bin]]
@@ -15,12 +15,12 @@ path = "src/client.rs"
 
 [dependencies]
 tonic-ws-transport = { path = "../../transport", features = ["native"] }
-tonic = { version = "0.5.0", features = ["transport", "codegen", "prost"] }
-prost = "0.8.0"
+tonic = { version = "0.10.2", features = ["transport", "codegen", "prost"] }
+prost = "0.12.3"
 tokio = { version = "1.1.1", features = ["full"] }
 futures-util = "0.3.12"
-tokio-tungstenite = "0.14.0"
+tokio-tungstenite = "0.20.0"
 tokio-stream = { version = "0.1.2", features = ["net"] }
 
 [build-dependencies]
-tonic-build = "0.5.0"
+tonic-build = "0.10.2"
