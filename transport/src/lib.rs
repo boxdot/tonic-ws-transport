@@ -11,6 +11,7 @@ use std::fmt::Debug;
 use std::future::Future;
 use std::io;
 use std::pin::Pin;
+#[cfg(feature = "native")]
 use std::sync::Arc;
 use std::task::{Context, Poll};
 
@@ -50,6 +51,7 @@ impl From<wasm_bindgen::JsValue> for Error {
 
 #[derive(Clone, Default)]
 pub struct WsConnector {
+    #[cfg(feature = "native")]
     resolve_bearer_token: Option<Arc<dyn Fn() -> String + Sync + Send + 'static>>,
 }
 
@@ -64,6 +66,7 @@ impl WsConnector {
         Default::default()
     }
 
+    #[cfg(feature = "native")]
     pub fn with_bearer_resolver(
         resolve_token: impl Fn() -> String + Send + Sync + 'static,
     ) -> Self {
@@ -91,10 +94,12 @@ impl WsConnector {
         let mut request = dst.into_client_request()?;
         if let Some(resolver) = self.resolve_bearer_token.as_ref() {
             let token = resolver();
-            request.headers_mut().typed_insert(Authorization::bearer(&token)?);
+            request
+                .headers_mut()
+                .typed_insert(Authorization::bearer(&token)?);
         }
 
-        let (ws_stream, _) = tokio_tungstenite::connect_async(dst).await?;
+        let (ws_stream, _) = tokio_tungstenite::connect_async(request).await?;
         Ok(WsConnection::from_combined_channel(ws_stream))
     }
 }

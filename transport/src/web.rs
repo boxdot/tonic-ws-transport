@@ -11,14 +11,14 @@ use web_sys::{MessageEvent, WebSocket};
 
 use std::future::Future;
 use std::pin::Pin;
-use std::sync::Arc;
+use std::rc::Rc;
 use std::task::{Context, Poll};
 
 #[cfg(not(feature = "native"))]
 pub async fn connect(dst: http::Uri) -> Result<super::WsConnection, Error> {
     use futures_util::{future, stream::TryStreamExt, SinkExt};
 
-    let ws = Ws(Arc::new(WebSocket::new(&dst.to_string())?));
+    let ws = Ws(Rc::new(WebSocket::new(&dst.to_string())?));
     (*ws).set_binary_type(web_sys::BinaryType::Arraybuffer);
     let client = WebConnection { ws, wake_fn: None }.await?;
 
@@ -47,7 +47,7 @@ pub async fn connect(dst: http::Uri) -> Result<super::WsConnection, Error> {
 }
 
 #[derive(Debug, Clone)]
-struct Ws(Arc<WebSocket>);
+struct Ws(Rc<WebSocket>);
 
 unsafe impl Send for Ws {}
 
@@ -127,9 +127,12 @@ impl Drop for WakeFn {
 
 #[derive(Debug)]
 pub struct WebClient {
+    #[allow(dead_code)]
     ws: Ws,
+    #[allow(dead_code)]
     rx: UnboundedReceiver<Result<Vec<u8>, Error>>,
-    handlers: Arc<Handlers>, // keeps the callbacks alive
+    #[allow(dead_code)]
+    handlers: Rc<Handlers>, // keeps the callbacks alive
 }
 
 impl WebClient {
@@ -147,7 +150,7 @@ impl WebClient {
             }
         }) as Box<dyn FnOnce()>);
 
-        let handlers = Arc::new(Handlers::register(
+        let handlers = Rc::new(Handlers::register(
             ws.clone(),
             Some(message_fn),
             Some(close_fn),
@@ -203,13 +206,14 @@ impl Drop for Handlers {
 #[derive(Debug)]
 struct WebClientSink {
     ws: Ws,
-    handlers: Arc<Handlers>, // keeps the callbacks alive
+    #[allow(dead_code)]
+    handlers: Rc<Handlers>, // keeps the callbacks alive
 }
 
 #[pin_project]
 struct WebClientStream {
     ws: Ws,
-    handlers: Arc<Handlers>, // keeps the callbacks alive
+    handlers: Rc<Handlers>, // keeps the callbacks alive
     #[pin]
     rx: UnboundedReceiver<Result<Vec<u8>, Error>>,
 }
