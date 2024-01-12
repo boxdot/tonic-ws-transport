@@ -13,7 +13,7 @@ env:
 jobs:
   rustfmt:
     name: rustfmt
-    runs-on: ubuntu-18.04
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
         uses: actions/checkout@v2
@@ -33,7 +33,7 @@ jobs:
 
   clippy:
     name: clippy
-    runs-on: ubuntu-18.04
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
         uses: actions/checkout@v2
@@ -52,7 +52,7 @@ jobs:
 
   build-test-x86_64-unknown-linux-gnu:
     name: build and test (x86_64-unknown-linux-gnu)
-    runs-on: ubuntu-18.04
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
         uses: actions/checkout@v2
@@ -76,11 +76,11 @@ jobs:
   build-test-x86_64-apple-darwin:
     name: build and test (x86_64-apple-darwin)
     runs-on: macos-latest
-    env:
-      SELECT_XCODE: /Applications/Xcode_12.2.app
+    # env:
+      # SELECT_XCODE: /Applications/Xcode_12.2.app
     steps:
-      - name: Select XCode version
-        run: sudo xcode-select -s "${SELECT_XCODE}"
+#      - name: Select XCode version
+#        run: sudo xcode-select -s "${SELECT_XCODE}"
       - name: Checkout repository
         uses: actions/checkout@v2
         with:
@@ -101,7 +101,7 @@ jobs:
 
   buuild-client-wasm32-unknown-unknown:
     name: build client (wasm32-unknown-unknown)
-    runs-on: ubuntu-18.04
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
         uses: actions/checkout@v2
