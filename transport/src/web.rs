@@ -127,8 +127,11 @@ impl Drop for WakeFn {
 
 #[derive(Debug)]
 pub struct WebClient {
+    #[allow(dead_code)]
     ws: Ws,
+    #[allow(dead_code)]
     rx: UnboundedReceiver<Result<Vec<u8>, Error>>,
+    #[allow(dead_code)]
     handlers: Arc<Handlers>, // keeps the callbacks alive
 }
 
@@ -203,6 +206,7 @@ impl Drop for Handlers {
 #[derive(Debug)]
 struct WebClientSink {
     ws: Ws,
+    #[allow(dead_code)]
     handlers: Arc<Handlers>, // keeps the callbacks alive
 }
 
