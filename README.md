@@ -31,6 +31,16 @@ python3 -m http.server
 // open http://0.0.0.0:8000/ in browser
 ```
 
+## Usage
+You can currently use this as a git dependency. You will need to enable the `tokio_unstable` config flag for tonic to compile.
+Update your `.cargo/config.toml`: 
+```toml
+[build]
+# This is necessary because tonic needs the tower `make` feature which in turn needs tokios io-std feature which doesn't
+# compile on wasm unless tokio_unstable is active
+rustflags = ["--cfg=tokio_unstable"]
+```
+
 ## License
 
  * Apache License, Version 2.0, ([LICENSE-APACHE](LICENSE-APACHE) or
