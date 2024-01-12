@@ -132,4 +132,4 @@ jobs:
       - name: Install wasm-pack
         uses: jetli/wasm-pack-action@v0.3.0
       - name: Build client
-        run: cd examples/wasm-client && wasm-pack build --target web
+        run: cd examples/wasm-client && RUSTFLAGS=--cfg=tokio_unstable wasm-pack build --target web
