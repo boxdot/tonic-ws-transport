@@ -45,6 +45,10 @@ jobs:
           toolchain: stable
           profile: minimal
           components: clippy
+      - name: install protoc
+        uses: taiki-e/install-action@v2
+        with:
+          tool: protoc
       - name: Clippy
         uses: actions-rs/cargo@v1
         with:
@@ -64,6 +68,10 @@ jobs:
           toolchain: stable
           profile: minimal
           components: rustfmt
+      - name: install protoc
+        uses: taiki-e/install-action@v2
+        with:
+          tool: protoc
       - name: Build
         uses: actions-rs/cargo@v1
         with:
@@ -90,6 +98,10 @@ jobs:
         with:
           toolchain: stable
           profile: minimal
+      - name: install protoc
+        uses: taiki-e/install-action@v2
+        with:
+          tool: protoc
       - name: Build
         uses: actions-rs/cargo@v1
         with:
@@ -113,6 +125,10 @@ jobs:
           toolchain: stable
           profile: minimal
           components: rustfmt
+      - name: install protoc
+        uses: taiki-e/install-action@v2
+        with:
+          tool: protoc
       - name: Install wasm-pack
         uses: jetli/wasm-pack-action@v0.3.0
       - name: Build client
