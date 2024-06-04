@@ -36,13 +36,19 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let listener = TcpListener::bind(addr).await?;
     let listener_stream = TcpListenerStream::new(listener);
-    let incoming = listener_stream.then(|connection| async {
+    let incoming = listener_stream.filter_map(|connection| async {
         match connection {
             Ok(tcp_stream) => {
-                let ws_stream = tokio_tungstenite::accept_async(tcp_stream).await.unwrap();
-                Ok(WsConnection::from_combined_channel(ws_stream))
+                let ws_stream = match tokio_tungstenite::accept_async(tcp_stream).await {
+                    Ok(ws_stream) => ws_stream,
+                    Err(e) => {
+                        eprintln!("failed to accept connection: {e}");
+                        return None;
+                    }
+                };
+                Some(Ok(WsConnection::from_combined_channel(ws_stream)))
             }
-            Err(e) => Err(e),
+            Err(e) => Some(Err(e)),
         }
     });
 
