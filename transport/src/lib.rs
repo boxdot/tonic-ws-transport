@@ -1,6 +1,3 @@
-#[cfg(feature = "native")]
-pub use native::WsConnectionInfo;
-
 use futures_util::{ready, sink::Sink};
 use pin_project::pin_project;
 use thiserror::Error;
@@ -100,7 +97,10 @@ impl WsConnector {
         }
 
         let (ws_stream, _) = tokio_tungstenite::connect_async(request).await?;
-        Ok(WsConnection::from_combined_channel(ws_stream))
+        Ok(WsConnection::from_combined_channel(
+            ws_stream,
+            EmptyConnectInfo,
+        ))
     }
 }
 
@@ -140,18 +140,22 @@ impl Future for WsConnecting {
     }
 }
 
+#[derive(Debug, Clone)]
+pub struct EmptyConnectInfo;
+
 #[pin_project]
-pub struct WsConnection {
+pub struct WsConnection<CI = EmptyConnectInfo> {
     #[pin]
     pub(crate) sink: WsConnectionSink,
     #[pin]
     pub(crate) reader: WsConnectionReader,
+    pub(crate) info: CI,
 }
 
 type WsConnectionSink = Box<dyn Sink<Message, Error = Error> + Unpin + Send>;
 type WsConnectionReader = Box<dyn AsyncRead + Unpin + Send>;
 
-impl AsyncWrite for WsConnection {
+impl<T> AsyncWrite for WsConnection<T> {
     fn poll_write(self: Pin<&mut Self>, cx: &mut Context, buf: &[u8]) -> Poll<io::Result<usize>> {
         let mut self_ = self.project();
         ready!(self_.sink.as_mut().poll_ready(cx)?);
@@ -175,7 +179,7 @@ impl AsyncWrite for WsConnection {
 }
 
 // forward AsyncRead impl to the `reader` field
-impl AsyncRead for WsConnection {
+impl<T> AsyncRead for WsConnection<T> {
     fn poll_read(
         self: Pin<&mut Self>,
         cx: &mut Context,
